@@ -3,17 +3,13 @@ let allIssues = [];
 
 const loadIssues = async () => {
   showLoader();
-
   const res = await fetch(
     "https://phi-lab-server.vercel.app/api/v1/lab/issues",
   );
 
   const data = await res.json();
-
   allIssues = data.data;
-
   displayIssues(allIssues);
-
   updateIssueCount(allIssues.length);
 
   hideLoader();
@@ -23,7 +19,6 @@ const loadIssues = async () => {
 const showLoader = () => {
   document.getElementById("loader").classList.remove("hidden");
 };
-
 const hideLoader = () => {
   document.getElementById("loader").classList.add("hidden");
 };
@@ -95,6 +90,8 @@ const displayIssues = (issues) => {
 
 loadIssues();
 
+// Issue count
+
 const updateIssueCount = (count) => {
   document.getElementById("issueCount").innerText = `${count} Issues`;
 };
@@ -116,6 +113,7 @@ const filterIssues = (status, btn) => {
   updateIssueCount(filtered.length);
 };
 
+// Active button
 const setActiveButton = (clickedBtn) => {
   const buttons = document.querySelectorAll(".tab-btn");
 
@@ -133,7 +131,6 @@ const searchIssues = async () => {
   showLoader();
 
   const searchText = document.getElementById("searchInput").value;
-
   const res = await fetch(
     `https://phi-lab-server.vercel.app/api/v1/lab/issues/search?q=${searchText}`,
   );
@@ -149,13 +146,9 @@ const searchIssues = async () => {
 // modal
 const openModal = (issue) => {
   document.getElementById("modalTitle").innerText = issue.title;
-
   document.getElementById("modalDescription").innerText = issue.description;
-
   document.getElementById("modalAuthor").innerText = issue.author;
-
   document.getElementById("modalAssignee").innerText = issue.author;
-
   document.getElementById("modalDate").innerText = new Date(
     issue.createdAt,
   ).toLocaleDateString();
