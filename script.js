@@ -1,71 +1,166 @@
-const loginForm = document.getElementById("loginForm");
-const messageBox = document.getElementById("messageBox");
-const submitBtn = document.getElementById("submitBtn");
+let allIssues = [];
 
-// Credentials
-const VALID_USER = "admin";
-const VALID_PASS = "admin123";
+// load issues from API
+const loadIssues = async () => {
+  const res = await fetch(
+    "https://phi-lab-server.vercel.app/api/v1/lab/issues",
+  );
+  const data = await res.json();
 
-loginForm.addEventListener("submit", (e) => {
-  e.preventDefault();
+  allIssues = data.data;
 
-  const userValue = document.getElementById("username").value.trim();
-  const passValue = document.getElementById("password").value.trim();
+  displayIssues(allIssues);
+  updateIssueCount(allIssues.length);
+};
 
-  // Loading state
-  submitBtn.innerText = "Verifying...";
-  submitBtn.disabled = true;
+loadIssues();
 
-  setTimeout(() => {
-    if (userValue === VALID_USER && passValue === VALID_PASS) {
-      // Success Message
-      showResponse("Login Successful! Redirecting...", "success");
+const displayIssues = (issues) => {
+  const container = document.getElementById("issues");
 
-      // Redirecting to main.html after 1 second
-      setTimeout(() => {
-        window.location.href = "main.html";
-      }, 1000);
-    } else {
-      // Error Message
-      showResponse("Invalid username or password.", "error");
-      submitBtn.innerText = "Sign In";
-      submitBtn.disabled = false;
-    }
-  }, 800);
-});
+  container.innerHTML = "";
 
-function showResponse(text, type) {
-  messageBox.innerText = text;
-  messageBox.className = "mb-4 p-3 rounded-lg text-sm text-center border block";
+  issues.forEach((issue) => {
+    const div = document.createElement("div");
 
-  if (type === "error") {
-    messageBox.classList.add("bg-red-50", "text-red-600", "border-red-100");
-  } else {
-    messageBox.classList.add(
-      "bg-green-50",
-      "text-green-600",
-      "border-green-100",
-    );
+    div.onclick = () => openModal(issue);
+
+    const borderColor =
+      issue.status === "open" ? "border-green-400" : "border-indigo-400";
+
+    div.className = `bg-white rounded-2xl border-t-[6px] ${borderColor} shadow-sm p-6 hover:shadow-xl transition`;
+
+    div.innerHTML = `
+<div class="flex justify-between items-start mb-4">
+
+  <div class="p-2 bg-green-50 rounded-lg text-green-500">
+    <i class="fa-solid fa-bug"></i>
+  </div>
+
+  <span class="text-[10px] font-black px-3 py-1 rounded-md text-red-600 bg-red-50 border border-red-100">
+    ${issue.priority?.toUpperCase()}
+  </span>
+
+</div>
+
+<h3 class="font-bold text-slate-800 text-base mb-2 leading-snug">
+  ${issue.title}
+</h3>
+
+<p class="text-slate-500 text-xs mb-5 line-clamp-2 leading-relaxed">
+  ${issue.description}
+</p>
+
+<div class="flex flex-wrap gap-2 mb-6">
+
+  <span class="text-[10px] font-black text-red-500 bg-red-50 px-2 py-1 rounded border border-red-100 flex items-center gap-1 uppercase">
+    <span class="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
+    ${issue.labels}
+  </span>
+
+  ${
+    issue.helpWanted
+      ? `<span class="text-[10px] font-black text-orange-500 bg-orange-50 px-2 py-1 rounded border border-orange-100 flex items-center gap-1 uppercase">
+        <span class="w-1.5 h-1.5 bg-orange-500 rounded-full"></span>
+        Help Wanted
+      </span>`
+      : ""
   }
-}
+
+</div>
+
+<div class="pt-4 border-t border-gray-100 flex justify-between items-center text-[11px] text-slate-400 font-medium">
+  <span>#${issue.id || 1} by ${issue.author}</span>
+  <span>${new Date(issue.createdAt).toLocaleDateString()}</span>
+</div>
+`;
+
+    container.appendChild(div);
+  });
+};
+
+const updateIssueCount = (count) => {
+  document.getElementById("issueCount").innerText = `${count} Issues`;
+};
+
+const filterIssues = (status, btn) => {
+  setActiveButton(btn); // button color change
+
+  if (status === "all") {
+    displayIssues(allIssues);
+    updateIssueCount(allIssues.length);
+    return;
+  }
+
+  const filtered = allIssues.filter(
+    (issue) => issue.status.toLowerCase() === status,
+  );
+
+  displayIssues(filtered);
+  updateIssueCount(filtered.length);
+};
+
+const setActiveButton = (clickedBtn) => {
+  const buttons = document.querySelectorAll(".tab-btn");
+
+  buttons.forEach((btn) => {
+    btn.classList.remove("bg-[#5800FF]", "text-white");
+    btn.classList.add("text-slate-500");
+  });
+
+  clickedBtn.classList.add("bg-[#5800FF]", "text-white");
+};
 
 // search
 
-const searchInput = document.getElementById("searchInput");
+const searchIssues = async () => {
+  const searchText = document.getElementById("searchInput").value.trim();
 
-const cards = document.querySelectorAll(".grid > div");
+  if (searchText === "") {
+    displayIssues(allIssues);
+    updateIssueCount(allIssues.length);
+    return;
+  }
 
-searchInput.addEventListener("input", (e) => {
-  const searchTerm = e.target.value.toLowerCase();
+  const res = await fetch(
+    `https://phi-lab-server.vercel.app/api/v1/lab/issues/search?q=${searchText}`,
+  );
 
-  cards.forEach((card) => {
-    const title = card.querySelector("h3").innerText.toLowerCase();
-    const description = card.querySelector("p").innerText.toLowerCase();
+  const data = await res.json();
 
-    if (title.includes(searchTerm) || description.includes(searchTerm)) {
-      card.style.display = "block";
-    } else {
-      card.style.display = "none";
-    }
-  });
-});
+  displayIssues(data.data);
+  updateIssueCount(data.data.length);
+};
+
+// modal
+const openModal = (issue) => {
+  document.getElementById("modalTitle").innerText = issue.title;
+
+  document.getElementById("modalDescription").innerText = issue.description;
+
+  document.getElementById("modalAuthor").innerText = issue.author;
+
+  document.getElementById("modalAssignee").innerText = issue.author;
+
+  document.getElementById("modalDate").innerText = new Date(
+    issue.createdAt,
+  ).toLocaleDateString();
+
+  document.getElementById("modalPriority").innerText =
+    issue.priority?.toUpperCase();
+
+  const statusEl = document.getElementById("modalStatus");
+
+  statusEl.innerText = issue.status === "open" ? "Opened" : "Closed";
+
+  // status color change
+  if (issue.status === "open") {
+    statusEl.className =
+      "px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700";
+  } else {
+    statusEl.className =
+      "px-3 py-1 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700";
+  }
+
+  document.getElementById("issueModal").showModal();
+};
